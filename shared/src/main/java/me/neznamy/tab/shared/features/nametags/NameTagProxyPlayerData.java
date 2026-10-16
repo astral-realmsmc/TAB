@@ -122,7 +122,7 @@ public class NameTagProxyPlayerData extends ProxyMessage {
                     // Property update
                     if (viewer.teamData.hasTeamRegistered(target)) {
                         viewer.getScoreboard().updateTeam(
-                                oldData.teamName,
+                                resolvedTeamName,
                                 prefix,
                                 suffix,
                                 nameVisibility,

@@ -95,6 +95,9 @@ public class NameTag extends TabFeature implements NameTagManager, JoinListener,
         onlinePlayers.addPlayer(connectedPlayer);
         prefixSuffixManager.loadProperties(connectedPlayer);
         connectedPlayer.teamData.teamName = connectedPlayer.sortingData.shortTeamName; // Sorting is loaded sync before nametags
+        // Set before registering teams to the player, so they do not receive any if disabled
+        boolean disabled = disableChecker.isDisableConditionMet(connectedPlayer);
+        connectedPlayer.teamData.disabled.set(disabled);
         for (TabPlayer all : onlinePlayers.getPlayers()) {
             if (all == connectedPlayer) continue; //avoiding double registration
             if (connectedPlayer.isVanished() && !all.canSee(connectedPlayer)) {
@@ -115,27 +118,37 @@ public class NameTag extends TabFeature implements NameTagManager, JoinListener,
                 proxyPlayer.setNametag(null);
             }
         }
-        if (disableChecker.isDisableConditionMet(connectedPlayer)) {
-            connectedPlayer.teamData.disabled.set(true);
-            return;
-        }
+        if (disabled) return;
         registerTeam(connectedPlayer);
         if (proxy != null) {
-            for (ProxyPlayer proxied : proxy.getProxyPlayers().values()) {
-                if (proxied.getNametag() == null) continue; // This proxy player is not loaded yet
-                connectedPlayer.teamData.registerTeam(
-                        proxied,
-                        proxied.getNametag().getResolvedTeamName(),
-                        prefixCache.get(proxied.getNametag().getPrefix()),
-                        suffixCache.get(proxied.getNametag().getSuffix()),
-                        proxied.getNametag().getNameVisibility(),
-                        CollisionRule.ALWAYS,
-                        Collections.singletonList(proxied.getNickname()),
-                        teamOptions,
-                        lastColorCache.get(proxied.getNametag().getPrefix()).getLastStyle().toEnumChatFormat()
-                );
-            }
+            registerProxyTeams(connectedPlayer);
             proxyHandler.sendProxyMessage(connectedPlayer);
+        }
+    }
+
+    /**
+     * Registers teams of all loaded proxy players to the given viewer.
+     *
+     * @param   viewer
+     *          Player to register proxy teams to
+     */
+    private void registerProxyTeams(@NotNull TabPlayer viewer) {
+        if (proxy == null) return;
+        for (ProxyPlayer proxied : proxy.getProxyPlayers().values()) {
+            if (proxied.getNametag() == null) continue; // This proxy player is not loaded yet
+            if (proxied.getNametag().isDisabled()) continue;
+            if (viewer.teamData.hasTeamRegistered(proxied)) continue;
+            viewer.teamData.registerTeam(
+                    proxied,
+                    proxied.getNametag().getResolvedTeamName(),
+                    prefixCache.get(proxied.getNametag().getPrefix()),
+                    suffixCache.get(proxied.getNametag().getSuffix()),
+                    proxied.getNametag().getNameVisibility(),
+                    CollisionRule.ALWAYS,
+                    Collections.singletonList(proxied.getNickname()),
+                    teamOptions,
+                    lastColorCache.get(proxied.getNametag().getPrefix()).getLastStyle().toEnumChatFormat()
+            );
         }
     }
 
@@ -203,9 +216,16 @@ public class NameTag extends TabFeature implements NameTagManager, JoinListener,
 
     public void onDisableConditionChange(TabPlayer p, boolean disabledNow) {
         if (disabledNow) {
+            // Drop all teams of this player without sending anything to them, the client may not have them anymore
+            p.teamData.forgetRegisteredTeams();
             unregisterTeam(p);
         } else {
             registerTeam(p);
+            for (TabPlayer all : onlinePlayers.getPlayers()) {
+                if (all == p) continue; // Already registered above
+                if (!p.teamData.hasTeamRegistered(all)) registerTeam(all, p);
+            }
+            registerProxyTeams(p);
         }
         if (proxy != null) {
             proxyHandler.sendProxyMessage(p);

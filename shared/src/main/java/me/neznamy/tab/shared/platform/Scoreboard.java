@@ -124,6 +124,16 @@ public interface Scoreboard {
     void unregisterTeam(@NonNull String teamName);
 
     /**
+     * Forgets team without sending any packets to the player. Used when the client
+     * is not expected to have the team anymore (or should not receive any team packets),
+     * so sending a remove packet could disconnect the player.
+     *
+     * @param   teamName
+     *          Team name
+     */
+    void forgetTeam(@NonNull String teamName);
+
+    /**
      * Updates team properties.
      *
      * @param   name

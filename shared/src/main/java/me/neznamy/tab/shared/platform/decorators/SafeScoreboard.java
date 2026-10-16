@@ -168,6 +168,15 @@ public abstract class SafeScoreboard<T extends TabPlayer> implements Scoreboard 
     }
 
     @Override
+    public synchronized void forgetTeam(@NonNull String teamName) {
+        Team team = teams.remove(teamName);
+        if (team == null) return;
+        for (String entry : team.getPlayers()) {
+            teamsByEntries.remove(entry, team);
+        }
+    }
+
+    @Override
     public synchronized void updateTeam(@NonNull String name, @NonNull TabComponent prefix, @NonNull TabComponent suffix,
                                  @NonNull NameVisibility visibility, @NonNull CollisionRule collision,
                                  int options, @NonNull EnumChatFormat color) {

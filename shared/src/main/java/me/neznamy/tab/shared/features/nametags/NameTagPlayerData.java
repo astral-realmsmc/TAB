@@ -249,6 +249,7 @@ public class NameTagPlayerData {
     public void registerTeam(@NotNull TabPlayer target, @NotNull String teamName, @NotNull TabComponent prefix, @NotNull TabComponent suffix,
                                  @NotNull Scoreboard.NameVisibility visibility, @NotNull Scoreboard.CollisionRule collision,
                                  @NotNull Collection<String> players, int options, @NotNull EnumChatFormat color) {
+        if (disabled.get()) return; // Players with disable condition met do not receive any team packets
         registeredTeams.put(target, teamName);
         player.getScoreboard().registerTeam(teamName, prefix, suffix, visibility, collision, players, options, color);
     }
@@ -256,6 +257,7 @@ public class NameTagPlayerData {
     public void registerTeam(@NotNull ProxyPlayer target, @NotNull String teamName, @NotNull TabComponent prefix, @NotNull TabComponent suffix,
                                  @NotNull Scoreboard.NameVisibility visibility, @NotNull Scoreboard.CollisionRule collision,
                                  @NotNull Collection<String> players, int options, @NotNull EnumChatFormat color) {
+        if (disabled.get()) return; // Players with disable condition met do not receive any team packets
         registeredProxyTeams.put(target, teamName);
         player.getScoreboard().registerTeam(teamName, prefix, suffix, visibility, collision, players, options, color);
     }
@@ -308,6 +310,21 @@ public class NameTagPlayerData {
         if (teamName != null) {
             player.getScoreboard().unregisterTeam(teamName);
         }
+    }
+
+    /**
+     * Forgets all teams registered to this player without sending any packets, both
+     * in this data and in player's scoreboard. Called when disable condition becomes met,
+     * as the client may not have these teams anymore and removing them could disconnect the player.
+     */
+    public void forgetRegisteredTeams() {
+        for (String teamName : registeredTeams.values()) {
+            player.getScoreboard().forgetTeam(teamName);
+        }
+        for (String teamName : registeredProxyTeams.values()) {
+            player.getScoreboard().forgetTeam(teamName);
+        }
+        clearRegisteredTeams();
     }
 
     /**

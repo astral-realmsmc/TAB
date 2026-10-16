@@ -23,6 +23,11 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:${version}")
 }
 
+// Older dev bundles ship a codebook version that cannot read Java 25 class files
+paperweight.javaLauncher.set(javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(21))
+})
+
 tasks.compileJava {
     options.release.set(21)
 }
